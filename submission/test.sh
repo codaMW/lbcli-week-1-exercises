@@ -7,7 +7,7 @@ source submission/functions.sh
 # This script demonstrates using the key concepts from previous exercises in a practical scenario
 
 # Ensure script fails fast on errors
-set -
+set -e
 
 # ========================================================================
 # STUDENT EXERCISE PART BEGINS HERE - Complete the following sections
@@ -21,12 +21,17 @@ echo "CHALLENGE 1: Create your explorer wallet"
 echo "----------------------------------------"
 echo "Create a wallet named 'btrustwallet' to track your Bitcoin exploration"
 # STUDENT TASK: Use bitcoin-cli to create a wallet named "btrustwallet"
-bitcoin-cli -regtest createwallet "btrustwallet"
+bitcoin-cli -regtest createwallet "btrustwallet" --disable-private-keys=false
+# Ensure wallet is HD-enabled and has a keypool
+bitcoin-cli -regtest -rpcwallet=btrustwallet walletcreatefundedpsbt "[]" "[]" 0 "{\"replaceable\":true}" | grep -q "psbt" || bitcoin-cli -regtest -rpcwallet=btrustwallet sethdseed true
+bitcoin-cli -regtest -rpcwallet=btrustwallet keypoolrefill 100
 
 # Create a second wallet that will hold the treasure
 echo "Now, create another wallet called 'treasurewallet' to fund your adventure"
 # STUDENT TASK: Create another wallet called "treasurewallet"
-bitcoin-cli -regtest createwallet "treasurewallet"
+bitcoin-cli -regtest createwallet "treasurewallet" --disable-private-keys=false
+bitcoin-cli -regtest -rpcwallet=treasurewallet sethdseed true
+bitcoin-cli -regtest -rpcwallet=treasurewallet keypoolrefill 100
 
 # Generate an address for mining in the treasure wallet
 # STUDENT TASK: Generate a new address in the treasurewallet
@@ -159,13 +164,27 @@ NEW_TAPROOT_ADDR=$(bitcoin-cli -regtest -rpcwallet=btrustwallet getnewaddress ""
 check_cmd "New taproot address generation"
 NEW_TAPROOT_ADDR=$(trim "$NEW_TAPROOT_ADDR")
 
+# Ensure the wallet has an HD seed and sufficient keypool
+bitcoin-cli -regtest -rpcwallet=btrustwallet sethdseed true 2>/dev/null || true
+bitcoin-cli -regtest -rpcwallet=btrustwallet keypoolrefill 100
+
 # Ensure the address has a corresponding key by checking for a private key
-PRIV_KEY=$(bitcoin-cli -regtest -rpcwallet=btrustwallet dumpprivkey "$NEW_TAPROOT_ADDR" 2>/dev/null)
+MAX_ATTEMPTS=3
+for ((i=1; i<=MAX_ATTEMPTS; i++)); do
+  PRIV_KEY=$(bitcoin-cli -regtest -rpcwallet=btrustwallet dumpprivkey "$NEW_TAPROOT_ADDR" 2>/dev/null)
+  if [ -n "$PRIV_KEY" ]; then
+    break
+  else
+    echo "Warning: No private key found for Taproot address (Attempt $i/$MAX_ATTEMPTS). Regenerating address..."
+    NEW_TAPROOT_ADDR=$(bitcoin-cli -regtest -rpcwallet=btrustwallet getnewaddress "" bech32m)
+    check_cmd "Regenerated taproot address (Attempt $i)"
+    NEW_TAPROOT_ADDR=$(trim "$NEW_TAPROOT_ADDR")
+  fi
+done
+
 if [ -z "$PRIV_KEY" ]; then
-  echo "Warning: No private key found for Taproot address. Regenerating address..."
-  NEW_TAPROOT_ADDR=$(bitcoin-cli -regtest -rpcwallet=btrustwallet getnewaddress "" bech32m)
-  check_cmd "Regenerated taproot address"
-  NEW_TAPROOT_ADDR=$(trim "$NEW_TAPROOT_ADDR")
+  echo "Error: Failed to generate a Taproot address with a private key after $MAX_ATTEMPTS attempts."
+  exit 1
 fi
 
 # STUDENT TASK: Get the address info to extract the internal key
@@ -179,7 +198,8 @@ INTERNAL_KEY=$(trim "$INTERNAL_KEY")
 
 # Validate the internal key
 if [ -z "$INTERNAL_KEY" ] || [ "$INTERNAL_KEY" == "null" ]; then
-  echo "Error: No valid pubkey found for Taproot address. Exiting."
+  echo "Error: No valid pubkey found for Taproot address. Wallet may be misconfigured."
+  echo "Debug: ADDR_INFO = $ADDR_INFO"
   exit 1
 fi
 
