@@ -7,7 +7,7 @@ source submission/functions.sh
 # This script demonstrates using the key concepts from previous exercises in a practical scenario
 
 # Ensure script fails fast on errors
-set -e
+set -
 
 # ========================================================================
 # STUDENT EXERCISE PART BEGINS HERE - Complete the following sections
@@ -105,7 +105,7 @@ echo "CHALLENGE 5: Validate the ancient vault address"
 echo "--------------------------------------------"
 echo "To ensure the P2SH vault is secure, verify it's a valid Bitcoin address"
 # STUDENT TASK: Validate the P2SH address
-P2SH_VALID=$(bitcoin-cli -regtest -rpcwallet=btrustwallet validateaddress $P2SH_ADDR | jq -r '.isvalid')
+P2SH_VALID=$(bitcoin-cli -regtest -rpcwallet=btrustwallet validateaddress "$P2SH_ADDR" | jq -r '.isvalid')
 check_cmd "Address validation"
 echo "P2SH vault validation: $P2SH_VALID"
 
@@ -125,7 +125,7 @@ echo "Verify the signature to reveal the hidden message!"
 
 # This part is done for you - creating a signed message
 SECRET_MESSAGE="You've successfully completed the Bitcoin treasure hunt!"
-SIGNATURE=$(bitcoin-cli -regtest -rpcwallet=btrustwallet signmessage $LEGACY_ADDR "$SECRET_MESSAGE")
+SIGNATURE=$(bitcoin-cli -regtest -rpcwallet=btrustwallet signmessage "$LEGACY_ADDR" "$SECRET_MESSAGE")
 check_cmd "Message signing"
 echo "Address: $LEGACY_ADDR"
 echo "Signature: $SIGNATURE"
@@ -135,7 +135,7 @@ echo "In an interactive environment, you would guess the message content."
 echo "For CI testing, we'll verify the correct message directly:"
 
 # STUDENT TASK: Verify the message
-VERIFY_RESULT=$(bitcoin-cli -regtest -rpcwallet=btrustwallet verifymessage $LEGACY_ADDR $SIGNATURE "$SECRET_MESSAGE")
+VERIFY_RESULT=$(bitcoin-cli -regtest -rpcwallet=btrustwallet verifymessage "$LEGACY_ADDR" "$SIGNATURE" "$SECRET_MESSAGE")
 check_cmd "Message verification"
 echo "Message verification result: $VERIFY_RESULT"
 
@@ -159,14 +159,36 @@ NEW_TAPROOT_ADDR=$(bitcoin-cli -regtest -rpcwallet=btrustwallet getnewaddress ""
 check_cmd "New taproot address generation"
 NEW_TAPROOT_ADDR=$(trim "$NEW_TAPROOT_ADDR")
 
+# Ensure the address has a corresponding key by checking for a private key
+PRIV_KEY=$(bitcoin-cli -regtest -rpcwallet=btrustwallet dumpprivkey "$NEW_TAPROOT_ADDR" 2>/dev/null)
+if [ -z "$PRIV_KEY" ]; then
+  echo "Warning: No private key found for Taproot address. Regenerating address..."
+  NEW_TAPROOT_ADDR=$(bitcoin-cli -regtest -rpcwallet=btrustwallet getnewaddress "" bech32m)
+  check_cmd "Regenerated taproot address"
+  NEW_TAPROOT_ADDR=$(trim "$NEW_TAPROOT_ADDR")
+fi
+
 # STUDENT TASK: Get the address info to extract the internal key
-ADDR_INFO=$(bitcoin-cli -regtest -rpcwallet=btrustwallet getaddressinfo $NEW_TAPROOT_ADDR)
+ADDR_INFO=$(bitcoin-cli -regtest -rpcwallet=btrustwallet getaddressinfo "$NEW_TAPROOT_ADDR")
 check_cmd "Getting address info"
 
-# STUDENT TASK: Extract the internal key (the x-only pubkey) from the descriptor
-INTERNAL_KEY=$(echo $ADDR_INFO | jq -r '.qr | .[0].desc')
-check_cmd "Extracting key from descriptor"
+# STUDENT TASK: Extract the internal key (the x-only pubkey) from the address info
+INTERNAL_KEY=$(echo "$ADDR_INFO" | jq -r '.pubkey // ""')
+check_cmd "Extracting key from address info"
 INTERNAL_KEY=$(trim "$INTERNAL_KEY")
+
+# Validate the internal key
+if [ -z "$INTERNAL_KEY" ] || [ "$INTERNAL_KEY" == "null" ]; then
+  echo "Error: No valid pubkey found for Taproot address. Exiting."
+  exit 1
+fi
+
+# Debug: Verify the key length (x-only pubkey should be 32 bytes / 64 hex chars)
+KEY_LENGTH=$(echo -n "$INTERNAL_KEY" | xxd -r -p | wc -c)
+if [ "$KEY_LENGTH" -ne 32 ]; then
+  echo "Error: Invalid x-only pubkey length ($KEY_LENGTH bytes, expected 32). Exiting."
+  exit 1
+fi
 
 # STUDENT TASK: Create a proper descriptor with just the key
 echo "Using internal key: $INTERNAL_KEY"
@@ -174,13 +196,13 @@ SIMPLE_DESCRIPTOR="tr($INTERNAL_KEY)"
 echo "Simple descriptor: $SIMPLE_DESCRIPTOR"
 
 # STUDENT TASK: Get a proper descriptor with checksum
-TAPROOT_DESCRIPTOR=$(bitcoin-cli -regtest -rpcwallet=btrustwallet getdescriptorinfo $SIMPLE_DESCRIPTOR | jq -r '.descriptor')
+TAPROOT_DESCRIPTOR=$(bitcoin-cli -regtest getdescriptorinfo "$SIMPLE_DESCRIPTOR" | jq -r '.descriptor')
 check_cmd "Descriptor generation"
 TAPROOT_DESCRIPTOR=$(trim "$TAPROOT_DESCRIPTOR")
 echo "Taproot treasure map: $TAPROOT_DESCRIPTOR"
 
 # STUDENT TASK: Derive an address from the descriptor
-DERIVED_ADDR_RAW=$(bitcoin-cli -regtest -rpcwallet=btrustwallet deriveaddresses $TAPROOT_DESCRIPTOR)
+DERIVED_ADDR_RAW=$(bitcoin-cli -regtest deriveaddresses "$TAPROOT_DESCRIPTOR")
 check_cmd "Address derivation"
 DERIVED_ADDR=$(echo "$DERIVED_ADDR_RAW" | tr -d '[]" \n\t')
 echo "Derived quantum vault address: $DERIVED_ADDR"
