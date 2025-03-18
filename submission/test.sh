@@ -227,4 +227,3 @@ echo "- Work with message signatures"
 echo "- Use Bitcoin descriptors"
 echo ""
 echo "NOTE: This script is specifically designed to work with Bitcoin Core v28."
-
