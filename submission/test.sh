@@ -21,7 +21,7 @@ echo "CHALLENGE 1: Create your explorer wallet"
 echo "----------------------------------------"
 echo "Create a wallet named 'btrustwallet' to track your Bitcoin exploration"
 # STUDENT TASK: Use bitcoin-cli to create a wallet named "btrustwallet"
-bitcoin-cli -regtest createwallet "btrustwallet" --disable-private-keys=false
+bitcoin-cli -regtest createwallet "btrustwallet" false
 # Ensure wallet is HD-enabled and has a keypool
 bitcoin-cli -regtest -rpcwallet=btrustwallet walletcreatefundedpsbt "[]" "[]" 0 "{\"replaceable\":true}" | grep -q "psbt" || bitcoin-cli -regtest -rpcwallet=btrustwallet sethdseed true
 bitcoin-cli -regtest -rpcwallet=btrustwallet keypoolrefill 100
@@ -29,7 +29,7 @@ bitcoin-cli -regtest -rpcwallet=btrustwallet keypoolrefill 100
 # Create a second wallet that will hold the treasure
 echo "Now, create another wallet called 'treasurewallet' to fund your adventure"
 # STUDENT TASK: Create another wallet called "treasurewallet"
-bitcoin-cli -regtest createwallet "treasurewallet" --disable-private-keys=false
+bitcoin-cli -regtest createwallet "treasurewallet" false
 bitcoin-cli -regtest -rpcwallet=treasurewallet sethdseed true
 bitcoin-cli -regtest -rpcwallet=treasurewallet keypoolrefill 100
 
