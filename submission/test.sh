@@ -135,7 +135,7 @@ echo "In an interactive environment, you would guess the message content."
 echo "For CI testing, we'll verify the correct message directly:"
 
 # STUDENT TASK: Verify the message
-VERIFY_RESULT=$(bitcoin-cli -regtest -rpcwallet=btrustwallet verifymessage $LEGACY_ADDR $SIGNATURE "$SECRET_MESSAGE" | jq -r '.result')
+VERIFY_RESULT=$(bitcoin-cli -regtest -rpcwallet=btrustwallet verifymessage $LEGACY_ADDR $SIGNATURE "$SECRET_MESSAGE")
 check_cmd "Message verification"
 echo "Message verification result: $VERIFY_RESULT"
 
