@@ -164,7 +164,7 @@ ADDR_INFO=$(bitcoin-cli -regtest -rpcwallet=btrustwallet getaddressinfo $NEW_TAP
 check_cmd "Getting address info"
 
 # STUDENT TASK: Extract the internal key (the x-only pubkey) from the descriptor
-INTERNAL_KEY=$(echo $ADDR_INFO | jq -r '.pubkey')
+INTERNAL_KEY=$(echo $ADDR_INFO | jq -r '.qr | .[0].desc')
 check_cmd "Extracting key from descriptor"
 INTERNAL_KEY=$(trim "$INTERNAL_KEY")
 
