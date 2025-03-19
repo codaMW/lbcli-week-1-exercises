@@ -173,7 +173,7 @@ ADDR_INFO=$(bitcoin-cli -regtest -rpcwallet=btrustwallet getaddressinfo "$NEW_TA
 check_cmd "Getting address info"
 
 # Extract internal key
-INTERNAL_KEY=$(echo "$ADDR_INFO" | jq -r '.pubkey')
+INTERNAL_KEY=$("$ADDR_INFO" | jq -r '.pubkey')
 check_cmd "Extracting internal key"
 INTERNAL_KEY=$(trim "$INTERNAL_KEY")
 
