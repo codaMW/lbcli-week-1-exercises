@@ -136,18 +136,18 @@ echo "Verify the signature to reveal the hidden message!"
 
 # This part is done for you - creating a signed message
 SECRET_MESSAGE="You've successfully completed the Bitcoin treasure hunt!"
-SIGNATURE=$(bitcoin-cli -regtest -rpcwallet=btrustwallet signmessage $LEGACY_ADDR "$SECRET_MESSAGE")
+SIGNATURE=$(bitcoin-cli -regtest -rpcwallet=btrustwallet signmessage "$LEGACY_ADDR" "$SECRET_MESSAGE")
 check_cmd "Message signing"
 echo "Address: $LEGACY_ADDR"
 echo "Signature: $SIGNATURE"
 
-# For interactive learning, students would guess the message:
+# For interactive learning, students would guess the message content:
 echo "In an interactive environment, you would guess the message content."
 echo "For CI testing, we'll verify the correct message directly:"
 
 # STUDENT TASK: Verify the message
 # WRITE YOUR SOLUTION BELOW:
-VERIFY_RESULT=
+VERIFY_RESULT=$(bitcoin-cli -regtest verifymessage "$LEGACY_ADDR" "$SIGNATURE" "$SECRET_MESSAGE")
 check_cmd "Message verification"
 echo "Message verification result: $VERIFY_RESULT"
 
@@ -158,6 +158,7 @@ else
   echo "ERROR: Message verification failed!"
   exit 1
 fi
+
 # CHALLENGE PART 7: Working with descriptors to find the final treasure
 echo "CHALLENGE 7: The descriptor treasure map"
 echo "-------------------------------------"
