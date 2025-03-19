@@ -172,10 +172,15 @@ NEW_TAPROOT_ADDR=$(trim "$NEW_TAPROOT_ADDR")
 ADDR_INFO=$(bitcoin-cli -regtest -rpcwallet=btrustwallet getaddressinfo "$NEW_TAPROOT_ADDR")
 check_cmd "Getting address info"
 
-# Extract internal key
-INTERNAL_KEY=$("$ADDR_INFO" | jq -r '.pubkey')
+# Extract internal key from the descriptor in 'desc' field
+INTERNAL_KEY=$(echo "$ADDR_INFO" | jq -r '.desc' | grep -o 'tr([a-f0-9]\{64\}' | sed 's/tr(//')
 check_cmd "Extracting internal key"
 INTERNAL_KEY=$(trim "$INTERNAL_KEY")
+if [[ -z "$INTERNAL_KEY" || ${#INTERNAL_KEY} -ne 64 ]]; then
+  echo "ERROR: Failed to extract a valid 64-character internal key!"
+  echo "Address info: $ADDR_INFO"
+  exit 1
+fi
 
 # Create simple descriptor (for display)
 echo "Using internal key: $INTERNAL_KEY"
@@ -199,6 +204,8 @@ if [[ "$NEW_TAPROOT_ADDR" == "$DERIVED_ADDR" ]]; then
   echo "Addresses match! The final treasure is yours!"
 else
   echo "ERROR: Address mismatch detected!"
+  echo "New taproot address: $NEW_TAPROOT_ADDR"
+  echo "Derived address:     $DERIVED_ADDR"
   exit 1
 fi
 
